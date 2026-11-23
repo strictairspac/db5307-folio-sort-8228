@@ -6,7 +6,7 @@ from sqlalchemy import and_, or_, select
 
 from src.config.settings import cache, engine
 from src.constants.workflow import Status
-from src.models.tables import audit, cases, evidence, runs
+from src.models.tables import audit, cases, evidence, run_holds, runs
 from src.services import domain
 from src.utils.encoding import canonical
 from src.utils.time import utc_time
@@ -63,8 +63,10 @@ def enqueue(case_id, actor):
 
 
 def claim():
-    ready = or_(runs.c.status == Status.QUEUED,
-                and_(runs.c.status == Status.RUNNING, runs.c.started_at < utc_time(-600)))
+    held = select(run_holds.c.run_id).where(run_holds.c.confirmed_at.is_(None))
+    ready = or_(and_(runs.c.status == Status.QUEUED, runs.c.id.not_in(held)),
+                and_(runs.c.status == Status.RUNNING, runs.c.started_at < utc_time(-600),
+                     runs.c.id.not_in(held)))
     with engine.begin() as conn:
         run = conn.execute(select(runs.c.id, runs.c.case_id).where(ready).order_by(runs.c.id)
                            .limit(1).with_for_update(skip_locked=True)).first()

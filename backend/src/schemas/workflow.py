@@ -15,3 +15,11 @@ class CaseForm(BaseModel):
 
 class ReviewForm(BaseModel):
     note: str = Field(min_length=1, max_length=500)
+
+
+class RestoreForm(BaseModel):
+    target: str | None = Field(default=None, max_length=63)
+
+
+class RequeueForm(BaseModel):
+    runs: list[int] | None = Field(default=None, max_length=200)
